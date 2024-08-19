@@ -89,7 +89,7 @@ After cloning the GitHub repository, you will want to do the following to get th
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-contract VotingandFunds {
+contract VotingAndFunds {
     address payable public owner;
     uint256 public balance;
     string[] public proposals;
