@@ -58,19 +58,6 @@ contract VotingAndFunds {
         emit Withdraw(_withdrawAmount);                                         // Emit withdraw event
     }
 
-    // Function to cast a vote for a candidate
-    function vote(uint8 _candidate) public {
-        require(!voters[msg.sender].voted, "You have already voted.");  
-        voters[msg.sender] = Voter(true, _candidate);                           // Record the vote
-        votes[_candidate] += 1;                                                 // Update vote count
-        emit VoteCasted(msg.sender, _candidate);                                // Emit vote cast event
-    }
-
-    // Function to get the number of votes for a candidate
-    function getVotes(uint8 _candidate) public view returns (uint256) {
-        return votes[_candidate];
-    }
-
     // Function to take a loan
     function takeLoan(uint256 _amount) public {
         require(_amount > 0, "Loan amount must be greater than 0");  
