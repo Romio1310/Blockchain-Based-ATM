@@ -1,66 +1,81 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
+// Contract for managing voting and funds
 contract VotingAndFunds {
-    address payable public owner;
-    uint256 public balance;
-    string[] public proposals;
-    mapping(string => uint256) public votes;
+    address payable public owner;  
+    uint256 public balance;        
 
+    // Events for logging important actions
     event Deposit(uint256 amount);
     event Withdraw(uint256 amount);
-    event ProposalSubmitted(string proposal);
-    event VoteCast(string proposal, uint256 votes);
+    event VoteCasted(address indexed voter, uint8 candidate);
+    event LoanTaken(address indexed borrower, uint256 amount, uint256 interest);
+    event LoanRepaid(address indexed borrower, uint256 amount);
 
-    constructor(uint initBalance) payable {
-        owner = payable(msg.sender);
-        balance = initBalance;
+    // Struct to store voter information
+    struct Voter {
+        bool voted;                                                 // Indicates if the voter has voted
+        uint8 vote;                                                 // Candidate voted for
     }
 
-    function getBalance() public view returns(uint256) {
+    // Mappings to track voters, votes, and loans
+    mapping(address => Voter) public voters;
+    mapping(uint8 => uint256) public votes;
+    mapping(address => uint256) public loans;
+
+    uint256 public constant INTEREST_RATE = 5;                      // Interest rate for loans
+
+    // Constructor to initialize the contract
+    constructor() payable {
+        owner = payable(msg.sender);                                // Set contract creator as owner
+        balance = msg.value;         
+    }
+
+    // Function to get the contract's balance
+    function getBalance() public view returns (uint256) {
         return balance;
     }
 
-    function deposit(uint256 _amount) public payable {
-        uint _previousBalance = balance;
-
-        require(msg.sender == owner, "You are not the owner of this account");
-
-        balance += _amount;
-
-        assert(balance == _previousBalance + _amount);
-
-        emit Deposit(_amount);
-    }
-
-    function withdraw(uint256 _withdrawAmount) public {
-        require(msg.sender == owner, "You are not the owner of this account");
-        uint _previousBalance = balance;
-        if (balance < _withdrawAmount) {
-            revert InsufficientBalance({
-                balance: balance,
-                withdrawAmount: _withdrawAmount
-            });
-        }
-
-        balance -= _withdrawAmount;
-
-        assert(balance == (_previousBalance - _withdrawAmount));
-
-        emit Withdraw(_withdrawAmount);
-    }
-
-    function submitProposal(string memory _proposal) public {
-        proposals.push(_proposal);
-        emit ProposalSubmitted(_proposal);
-    }
-
-    function vote(string memory _proposal) public {
-        votes[_proposal] += 1;
-        emit VoteCast(_proposal, votes[_proposal]);
-    }
-
-    // custom errors
-    error UnauthorizedUser(address user);
+    // Custom error for insufficient balance
     error InsufficientBalance(uint256 balance, uint256 withdrawAmount);
+
+    // Function to deposit Ether into the contract
+    function deposit() public payable {
+        require(msg.value > 0, "Deposit amount must be greater than 0");  // Ensure deposit is positive
+        balance += msg.value;  
+        emit Deposit(msg.value);  
+    }
+
+    // Function to withdraw Ether from the contract
+    function withdraw(uint256 _withdrawAmount) public {
+        require(msg.sender == owner, "You are not the owner of this account");  // Check owner
+        if (balance < _withdrawAmount) {
+            revert InsufficientBalance(balance, _withdrawAmount);               // Revert if insufficient balance
+        }
+        balance -= _withdrawAmount;                                             // Update balance
+        payable(msg.sender).transfer(_withdrawAmount);                          // Transfer funds
+        emit Withdraw(_withdrawAmount);                                         // Emit withdraw event
+    }
+
+    // Function to take a loan
+    function takeLoan(uint256 _amount) public {
+        require(_amount > 0, "Loan amount must be greater than 0");  
+        require(_amount <= balance, "Not enough funds in the contract");  
+        uint256 interest = (_amount * INTEREST_RATE) / 100;                     // Calculate interest
+        loans[msg.sender] = _amount + interest;                                 // Record loan and interest
+        balance -= _amount;                                                     // Update balance
+        payable(msg.sender).transfer(_amount);                                  // Transfer loan amount
+        emit LoanTaken(msg.sender, _amount, interest);                          // Emit loan taken event
+    }
+
+    // Function to repay a loan
+    function repayLoan() public payable {
+        require(loans[msg.sender] > 0, "You have no loans to repay");           // Check if there is a loan
+        require(msg.value == loans[msg.sender], "Incorrect repayment amount");  // Ensure correct repayment amount
+
+        loans[msg.sender] = 0;  
+        balance += msg.value;  
+        emit LoanRepaid(msg.sender, msg.value);                                 // Emit loan repaid event
+    }
 }
